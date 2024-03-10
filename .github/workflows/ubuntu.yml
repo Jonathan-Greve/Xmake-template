@@ -62,6 +62,10 @@ jobs:
         run: |
           xmake f -v -a ${{ matrix.arch }} --toolchain=gcc -y
           xmake -vD -y
+
+      - name: Run tests
+        run: |
+          xmake test -v
     
       - name: Get target name
         id: get_target_name

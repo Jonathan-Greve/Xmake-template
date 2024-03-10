@@ -1,4 +1,4 @@
-name: Linux CD
+name: Ubuntu CI/CD
 
 on:
   pull_request:

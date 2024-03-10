@@ -23,7 +23,7 @@ function add_platform_specific_flags()
     if is_plat("windows") then
         add_cxxflags("/EHsc")
     else
-        -- add_cxxflags("-fpermissive")
+        -- Add flags for e.g. linux here
     end
 end
 

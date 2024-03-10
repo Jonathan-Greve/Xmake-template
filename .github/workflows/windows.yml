@@ -1,4 +1,4 @@
-name: Windows CD
+name: Windows CI/CD
 
 on:
   pull_request:

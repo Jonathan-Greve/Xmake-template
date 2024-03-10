@@ -4,6 +4,14 @@ This repository provides a simple setup for a C++23 project using Xmake as the b
 
 **Note:** Please be aware that `import std;` currently only works for the Windows MSVC compiler and not for GCC. Modules are still not fully supported in any compiler. For example, `std::print` (`import <print>`) doesn't work in GCC-13.
 
+## Enabling GitHub Workflow to Automatically Create Releases
+To allow GitHub Actions to create releases automatically, you need to grant the necessary permissions. Follow these steps:
+
+Go to your GitHub project's `Settings` page.
+Navigate to the `Actions` tab.
+Under the `Workflow permissions` section, select `Read and write permissions`.
+If you don't enable these permissions, the `Release` step of the workflows will fail, and the releases won't be created automatically.
+
 ## Project Structure
 
 The project structure is as follows:

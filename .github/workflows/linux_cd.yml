@@ -1,0 +1,153 @@
+name: Linux CD
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        arch: [x86_64, x86]
+
+    runs-on: ${{ matrix.os }}
+
+    concurrency:
+      group: ${{ github.ref }}-${{ github.base_ref }}-${{ github.head_ref }}-${{ matrix.os }}-${{ matrix.arch }}-Linux
+      cancel-in-progress: true
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: true
+    
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+    
+      - name: Install xmake
+        run: |
+          wget https://xmake.io/shget.text -O - | bash
+          echo "/home/runner/.local/bin" >> $GITHUB_PATH
+    
+      - name: Install latest GCC
+        run: |
+          sudo add-apt-repository ppa:ubuntu-toolchain-r/ppa -y 
+          sudo apt-get update
+          sudo apt install -y g++-13 gcc-13
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 60 --slave /usr/bin/g++ g++ /usr/bin/g++-13
+          sudo apt-get install -y gcc-13-multilib g++-13-multilib
+
+      - name: Print GCC version
+        run: gcc --version
+    
+      - name: Set xmake package cache path
+        run: echo "XMAKE_PKG_CACHEDIR=$(pwd)/xmake-cache" >> $GITHUB_ENV
+    
+      - name: Retrieve xmake cache for packages
+        uses: actions/cache@v4
+        with:
+          path: xmake-cache
+          key: ${{ matrix.os }}-${{ matrix.arch }}
+    
+      - name: Build with GCC
+        run: |
+          xmake f -v -a ${{ matrix.arch }} --toolchain=gcc -y
+          xmake -vD -y
+    
+      - name: Get target name
+        id: get_target_name
+        run: |
+          targetName=$(grep 'target' xmake.lua | cut -d'"' -f 2)
+          echo "::set-output name=target_name::$targetName"
+    
+      - name: Rename executable
+        run: mv "build/linux/${{ matrix.arch }}/release/${{ steps.get_target_name.outputs.target_name }}" "build/linux/${{ matrix.arch }}/release/${{ steps.get_target_name.outputs.target_name }}_${{ matrix.arch }}"
+    
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: executable-${{ matrix.arch }}
+          path: build/linux/${{ matrix.arch }}/release/${{ steps.get_target_name.outputs.target_name }}_${{ matrix.arch }}
+      
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version
+        id: extract_version
+        run: |
+          VERSION=$(grep 'set_version' xmake.lua | cut -d'"' -f 2)
+          echo "::set-output name=version::$VERSION"
+        
+      - name: Check if tag exists
+        id: check_tag
+        run: |
+          git fetch --tags
+          if git rev-parse ${{ steps.extract_version.outputs.version }} >/dev/null 2>&1; then
+            echo "Tag already exists"
+          else
+            echo "Tag does not exist. Continuing to next step."
+            echo "::set-output name=tag_exists::false"
+          fi
+
+      - name: Create Tag
+        id: create_tag
+        if: steps.check_tag.outputs.tag_exists == 'false'
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+          git tag -a ${{ steps.extract_version.outputs.version }} -m "Release ${{ steps.extract_version.outputs.version }}"
+          git push origin ${{ steps.extract_version.outputs.version }}
+
+      - name: Generate Changelog
+        id: generate_changelog
+        run: |
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 --match "*.*.*" $(git rev-list --tags --skip=1 --max-count=1))
+          echo "PREVIOUS_TAG=$PREVIOUS_TAG" >> $GITHUB_ENV
+          git log --no-merges --pretty="%h - %s (%an)<br />" $PREVIOUS_TAG..$VERSION > CHANGELOG.md
+
+      - name: Get target name
+        id: get_target_name
+        run: |
+          targetName=$(grep 'target' xmake.lua | cut -d'"' -f 2)
+          echo "::set-output name=target_name::$targetName"
+
+      - name: Download x86_64 artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: executable-x86_64
+
+      - name: Download x86 artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: executable-x86
+
+      - name: Display structure of downloaded files
+        run: ls -R
+
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          fail_on_unmatched_files: true
+          tag_name: ${{ steps.extract_version.outputs.version }}
+          name: Release ${{ steps.extract_version.outputs.version }}
+          body_path: CHANGELOG.md
+          files: |
+            ${{ steps.get_target_name.outputs.target_name }}_x86_64
+            ${{ steps.get_target_name.outputs.target_name }}_x86

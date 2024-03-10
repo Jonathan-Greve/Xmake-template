@@ -52,6 +52,10 @@ jobs:
           xmake f -v -a ${{ matrix.arch }} -y
           xmake -vD -y
 
+      - name: Run tests
+        run: |
+          xmake test -v
+
       - name: Get target name
         id: get_target_name
         run: |

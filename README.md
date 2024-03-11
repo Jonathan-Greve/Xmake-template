@@ -20,8 +20,8 @@ The project structure is as follows:
 ├── .github
 │   └── workflows
 │       ├── greetings.yml
-│       ├── linux_cd.yml
-│       └── windows_cd.yml
+│       ├── linux.yml
+│       └── windows.yml
 ├── src
 │   ├── hello.cppm
 │   └── main.cppm
@@ -32,8 +32,8 @@ The project structure is as follows:
 ```
 - `.github/workflows/`: Directory containing the CI/CD workflow files.
   - `greetings.yml`: Workflow file for greeting users on their first issue or pull request.
-  - `linux_cd.yml`: Workflow file for building and releasing the project on Linux (Ubuntu).
-  - `windows_cd.yml`: Workflow file for building and releasing the project on Windows.
+  - `linux.yml`: Workflow file for building and releasing the project on Linux (Ubuntu).
+  - `windows.yml`: Workflow file for building and releasing the project on Windows.
 - `src/`: Directory containing the source files of the project.
 - `tests/`: Directory containing the test files using GTest and GMock.
 - `xmake.lua`: The Xmake configuration file.
